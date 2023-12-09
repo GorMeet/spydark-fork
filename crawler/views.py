@@ -149,7 +149,6 @@ def surface(request):
     return render(request, 'crawler/surface.html', {'form1':form1, 'form2':form2, 'title':"Surface web Crawl"})
  
      
-@login_required
 def dark(request):
     global iterativeCrawledKeywords
     # Form1 >>>>>>>>>>>>
@@ -251,7 +250,8 @@ def crawled(request):
         url = request.GET.get('url')
         depth = int(request.GET.get('depth'))
         dw_crawler = DarkWebCrawler()
-        links, topFiveWords = dw_crawler.tor_crawler(url, depth, False)
+        print(url)
+        links, topFiveWords, addresses = dw_crawler.tor_crawler(url, depth, False)
         database = "dark-url-db"
         collection = url
         data = {"Platform": "Dark Web URL", "Seed URL": url, "Depth":depth}
@@ -260,7 +260,7 @@ def crawled(request):
         keyword = request.GET.get('keyword')
         depth = int(request.GET.get('depth'))
         dw_crawler = DarkWebCrawler()
-        links, topFiveWords = dw_crawler.tor_crawler(keyword, depth, True)
+        links, topFiveWords, addresses = dw_crawler.tor_crawler(keyword, depth, True)
         database = "dark-key-db"
         collection = keyword
         data = {"Platform": "Dark Web Keyword", "Keyword": keyword, "Depth":depth}
@@ -298,5 +298,5 @@ def crawled(request):
         crawled_dropdown_choices.append((count, "All words together"))
 
 
-    return render(request, 'crawler/crawled.html', {'links':links, 'no_of_links':len(links), 'time_elapsed':time_elapsed, 'isIterative':isIterative, 'topWords':topWords, 'urlSub1':urlSub1, 'urlSub2':urlSub2, 'title':"Crawling reults"})
+    return render(request, 'crawler/crawled.html', {'links':links, 'no_of_links':len(links), 'time_elapsed':time_elapsed, 'isIterative':isIterative, 'topWords':topWords, 'urlSub1':urlSub1, 'urlSub2':urlSub2, 'title':"Crawling reults", "btc_address": addresses})
     

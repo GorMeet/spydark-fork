@@ -21,6 +21,14 @@
     </div>
     <br><br><br><br>
 
+    <ul>
+    {% for address in addresses %}
+        <div class="address">
+            <li>{{ address }}</li>
+        </div>
+    {% endfor %}
+    </ul>
+
     {% if isIterative %}
         <div id="topFiveWords">
             <h4>Most occuring words</h4>

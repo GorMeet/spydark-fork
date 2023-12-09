@@ -1,3 +1,4 @@
+import re
 import requests
 from lxml import html
 import collections
@@ -11,14 +12,15 @@ from fake_useragent import UserAgent
 from bs4 import BeautifulSoup
 from .utils import connect_mongodb, connect_gridfs, display_wordcloud
 import os
+from django.conf import settings
 
 # TODO: Add constants
-TORCC_HASH_PASSWORD = "<torcc_password>"
-TOR_BROWSER_PATH = "/home/meet/Documents/College/SIH/crawler/tor-browser"
+#TOR_BROWSER_PATH = "/home/meet/Documents/College/SIH/crawler/tor-browser"
 
 class DarkWebCrawler:
     
     def __init__(self):
+        self.bitcoin_regex = r"(?<![a-km-zA-HJ-NP-Z0-9])[13][a-km-zA-HJ-NP-Z0-9]{26,33}(?![a-km-zA-HJ-NP-Z0-9])"
         import warnings
         warnings.filterwarnings("ignore")
         try:
@@ -31,7 +33,7 @@ class DarkWebCrawler:
         self.wait_time = 1
         
         '''socks proxies required for TOR usage'''
-        self.proxies = {'http' : 'socks5h://127.0.0.1:9050', 'https' : 'socks5h://127.0.0.1:9050'}
+        self.proxies = {'http' : 'socks5h://127.0.0.1:9150', 'https' : 'socks5h://127.0.0.1:9150'}
 
     def get_current_ip(self):
         try:
@@ -43,6 +45,7 @@ class DarkWebCrawler:
 
     def renew_tor_ip(self):
         with Controller.from_port(port = 9051) as controller:
+            TORCC_HASH_PASSWORD = settings.TOR_PASSWORD#16:A1AB65C5D645A477609B6C2BD16F8A05A7B01F40D27CCF707476846B95"
             controller.authenticate(password=TORCC_HASH_PASSWORD)
             controller.signal(Signal.NEWNYM)
 
@@ -51,7 +54,7 @@ class DarkWebCrawler:
             ua = UserAgent()
             user_agent = ua.random
             headers = {'User-Agent': user_agent}
-            response = requests.get(url, proxies = self.proxies, headers = headers, timeout = 15)
+            response = requests.get(url, proxies = self.proxies, headers = headers, timeout = 20)
             response.raise_for_status()
         except HTTPError as http_err:
             print(" Page not found..." + url)
@@ -66,28 +69,7 @@ class DarkWebCrawler:
 
     def store_images_in_db(self, isKeyword, images):
 
-        fs = connect_gridfs("dark-key-db") if isKeyword else connect_gridfs("dark-url-db")
-        coll = connect_mongodb("dark-key-db", "fs.files") if isKeyword else connect_mongodb("dark-url-db", "fs.files")
-
         print("Images ->", images)
-        for image in images:
-            try:
-                self.renew_tor_ip()                
-                time.sleep(self.wait_time)
-                current_ip = self.get_current_ip()
-                print("\tIP : {}".format(current_ip))
-                print("\tImage ->", image[0])
-                ua = UserAgent()
-                user_agent = ua.random
-                headers = {'User-Agent': user_agent}
-                contents = requests.get(image[0], proxies=self.proxies, headers=headers).content
-                img_doc = coll.find_one({"filename":str(image[0])})
-                if img_doc is not None:
-                    fs.delete(img_doc["_id"])
-                fs.put(contents, filename=str(image[0]))
-                print("\tImage stored")
-            except Exception:
-                print("\tImage not found")
 
     def tor_crawler(self, keyUrl, depth, isKeyword):
 
@@ -109,6 +91,7 @@ class DarkWebCrawler:
                 visited = True
 
         links = []
+        addresses = []
         folder = 'crawler'
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -119,12 +102,19 @@ class DarkWebCrawler:
                 for x in coll.find():
                     links.append(x["Link"])
                     try:
+                        text = x["Page content"]
+                        addresses = re.findall(self.bitcoin_regex, text)
+                        print("Addresses -> ", addresses)
+                        with open(os.path.join(folder, 'btc_adrx.txt'), 'a') as f:
+                            for address in addresses:
+                                f.write(address + "\n")
+
                         wc_words.write(x["Page content"] + "\n\n")
                     except Exception:
                         pass
             
             else:
-                os.chdir(os.path.dirname(TOR_BROWSER_PATH))
+                #os.chdir(os.path.dirname(TOR_BROWSER_PATH))
                 time.sleep(10)
                 print("Tor Browser started")
                 
@@ -136,7 +126,7 @@ class DarkWebCrawler:
                 ua = UserAgent()
                 user_agent = ua.random
                 headers = {'User-Agent': user_agent}
-                r = requests.get(url, proxies = self.proxies, headers = headers)
+                r = requests.get(url, proxies = self.proxies, headers = headers, timeout=20)
                 body = html.fromstring(r.content)
                 s = BeautifulSoup(r.text, 'lxml')
                 print(">>>>>>>>>", s.find("title").text.strip())
@@ -311,14 +301,13 @@ class DarkWebCrawler:
                     visitedcoll.insert_one({"seed-url":keyUrl})
                 
 
-            topFiveWords = display_wordcloud(wc_words)
-        wc_words.close()
+            topFiveWords = []#display_wordcloud(wc_words)
 
-        return links, topFiveWords
+        return links, topFiveWords, list(set(addresses))
 
 
     def get_page_content(self, link):
-        os.startfile(TOR_BROWSER_PATH)
+        #os.startfile(TOR_BROWSER_PATH)
         time.sleep(10)
         print("Tor Browser started")
 
@@ -336,7 +325,7 @@ class DarkWebCrawler:
 
         
     def get_todays_status(self, flagged_links):
-        os.startfile(TOR_BROWSER_PATH)
+        #os.startfile(TOR_BROWSER_PATH)
         time.sleep(10)
         print("Tor Browser started")
 

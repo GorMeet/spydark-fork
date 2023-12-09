@@ -9,12 +9,13 @@ from wordcloud import WordCloud, STOPWORDS
 from pymongo import MongoClient
 from gridfs import GridFS
 from googlesearch import search
+from django.conf import settings
 import re
 
 # TODO: Add constants
 INSTAGRAM_USERNAME = ""
 INSTAGRAM_PASSWORD = ""
-MONGODB_CONNECTION = "mongodb+srv://darkbit:darkbits@cluster0.uurbrvr.mongodb.net/temp1?retryWrites=true&w=majority"
+MONGODB_CONNECTION = settings.MONGODB_URI
 CHROMEDRIVER_PATH = "/home/meet/Documents/College/SIH/crawler/chromedriver"
 
 def connect_mongodb(database, keyword):
@@ -55,11 +56,11 @@ def display_wordcloud(wc_words, isLink = False):
     wc_words.seek(0)
     
     if isLink:
-        wordc.generate(open('crawler/static/crawler/wc_words_link.txt', encoding='utf-8').read())
-        wordc.to_file('crawler/static/crawler/wc_img_link.png')
+        wordc.generate(open('static/crawler/wc_words_link.txt', encoding='utf-8').read())
+        wordc.to_file('static/crawler/wc_img_link.png')
     else:
-        wordc.generate(open('crawler/static/crawler/wc_words.txt', encoding='utf-8').read())
-        wordc.to_file('crawler/static/crawler/wc_img.png')
+        wordc.generate(open('static/crawler/wc_words.txt', encoding='utf-8').read())
+        wordc.to_file('static/crawler/wc_img.png')
 
     topKeyValuePairs = list(wordc.words_.items())[:5]
 
